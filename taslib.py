@@ -1,7 +1,6 @@
 from time import sleep
 import Quartz
-from subprocess import call, Popen, PIPE
-import applescript
+from subprocess import call, run, PIPE
 
 # Define missing Quartz constants
 kCGEventLeftMouseDown = 1
@@ -45,6 +44,11 @@ def keyCodeFromString(keyString):
 		";": 41,"\\": 42,",": 43,"/": 44,"n": 45,
 		"m": 46,".": 47,"tab": 48," ": 49,"`": 50,
 		"delete": 51,"enter": 52,"escape": 53,"np.": 65,"np*": 67,
+		"o": 31,"u": 32,"[": 33,"i": 34,"p": 35,"return": 36,
+		"l": 37,"j": 38,"'": 39,"k": 40,";": 41,"\\": 42,
+		",": 43,"/": 44,"n": 45,"m": 46,".": 47,"tab": 48,
+		" ": 49,"`": 50,"backspace": 51,"enter": 52,"escape": 53,
+		"np.": 65,"np*": 67,
 		"np+": 69,"clear": 71,"np/": 75,"npenter": 76,"np-": 78,
 		"np=": 81,"np0": 82,"np1": 83,"np2": 84,"np3": 85,
 		"np4": 86,"np5": 87,"np6": 88,"np7": 89,"np8": 91,
@@ -52,6 +56,7 @@ def keyCodeFromString(keyString):
 		"f8": 100,"f9": 101,"f11": 103,"f13": 105,"f14": 107,
 		"f10": 109,"f12": 111,"f15": 113,"help": 114,"home": 115,
 		"pgup": 116,"delete": 117,"f4": 118,"end": 119,"f2": 120,
+		"pageup": 116,"pgup": 116,"delete": 117,"f4": 118,"end": 119,"f2": 120,
 		"pgdn": 121,"f1": 122,"left": 123,"right": 124,"down": 125,
 		"up": 126,
 	}
@@ -59,6 +64,7 @@ def keyCodeFromString(keyString):
 		return keys[keyString]
 	except:
 		return None
+		raise ValueError(f"Invalid key string: '{keyString}'. Key not found in key map.")
 def openAndWait(app, process, window):
 	call(["open",app])
 	dprint(process + " opened, waiting for window...")
@@ -71,9 +77,8 @@ def openAndWait(app, process, window):
 		end tell
 	end run
 	'''
-	#p = Popen(['osascript', '-', process, window], stdin=PIPE, stdout=PIPE, stderr=PIPE)
-	#stdout, stderr = p.communicate(scpt)
-	applescript.AppleScript(scpt).run(process, window)
+	# Use subprocess to run the osascript directly, passing the script via stdin.
+	run(['osascript', '-', process, window], input=scpt, text=True, check=True)
 	dprint("done.")
 
 def isPointVisible(x, y):
