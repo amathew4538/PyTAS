@@ -1,0 +1,166 @@
+from time import sleep
+import Quartz
+from subprocess import call, Popen, PIPE
+import applescript
+
+# Define missing Quartz constants
+kCGEventLeftMouseDown = 1
+kCGEventLeftMouseUp = 2
+kCGEventRightMouseDown = 3
+kCGEventRightMouseUp = 4
+kCGEventMouseMoved = 5
+kCGEventLeftMouseDragged = 6
+kCGEventRightMouseDragged = 7
+kCGEventKeyDown = 10
+kCGEventKeyUp = 11
+kCGEventFlagsChanged = 12
+kCGEventScrollWheel = 22
+kCGEventOtherMouseDown = 25
+kCGEventOtherMouseUp = 26
+kCGEventOtherMouseDragged = 27
+
+# Taps
+kCGHIDEventTap = 0
+kCGSessionEventTap = 1
+kCGAnnotatedSessionEventTap = 2
+
+debug = False
+
+def debugMode(d):
+	global debug
+	debug = d
+def dprint(str):
+	global debug
+	if debug:
+		print(str)
+def keyCodeFromString(keyString):
+	keys = {"a": 0,"s": 1,"d": 2,"f": 3,"h": 4,
+		"g": 5,"z": 6,"x": 7,"c": 8,"v": 9,
+		"b": 11,"q": 12,"w": 13,"e": 14,"r": 15,
+		"y": 16,"t": 17,"1": 18,"2": 19,"3": 20,
+		"4": 21,"6": 22,"5": 23,"=": 24,"9": 25,
+		"7": 26,"-": 27,"8": 28,"0": 29,"]": 30,
+		"o": 31,"u": 32,"[": 33,"i": 34,"p": 35,
+		"return": 36,"l": 37,"j": 38,"'": 39,"k": 40,
+		";": 41,"\\": 42,",": 43,"/": 44,"n": 45,
+		"m": 46,".": 47,"tab": 48," ": 49,"`": 50,
+		"delete": 51,"enter": 52,"escape": 53,"np.": 65,"np*": 67,
+		"np+": 69,"clear": 71,"np/": 75,"npenter": 76,"np-": 78,
+		"np=": 81,"np0": 82,"np1": 83,"np2": 84,"np3": 85,
+		"np4": 86,"np5": 87,"np6": 88,"np7": 89,"np8": 91,
+		"np9": 92,"f5": 96,"f6": 97,"f7": 98,"f3": 99,
+		"f8": 100,"f9": 101,"f11": 103,"f13": 105,"f14": 107,
+		"f10": 109,"f12": 111,"f15": 113,"help": 114,"home": 115,
+		"pgup": 116,"delete": 117,"f4": 118,"end": 119,"f2": 120,
+		"pgdn": 121,"f1": 122,"left": 123,"right": 124,"down": 125,
+		"up": 126,
+	}
+	try:
+		return keys[keyString]
+	except:
+		return None
+def openAndWait(app, process, window):
+	call(["open",app])
+	dprint(process + " opened, waiting for window...")
+	scpt = '''
+	on run {proc, win}
+		tell application "System Events"
+			repeat until window win of process proc exists
+			end repeat
+			set frontmost of process proc to true
+		end tell
+	end run
+	'''
+	#p = Popen(['osascript', '-', process, window], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+	#stdout, stderr = p.communicate(scpt)
+	applescript.AppleScript(scpt).run(process, window)
+	dprint("done.")
+
+def isPointVisible(x, y):
+	err, displays, num_displays = Quartz.CGGetDisplaysWithPoint((x, y), 1, None, None)
+	return err == 0 and num_displays > 0
+
+# Note: The CFRelease function is garbage-collected by PyObjC, so we don't need to call it.
+
+def mEvent(type, posx, posy, btn=0):
+	theEvent = Quartz.CGEventCreateMouseEvent(None, type, (posx,posy), btn)
+	Quartz.CGEventPost(kCGHIDEventTap, theEvent)
+#	CFRelease(theEvent)
+def mMove(posx, posy, delay=0):
+	mEvent(kCGEventMouseMoved, posx, posy)
+	dprint("mouse moved")
+	sleep(delay)
+def mDown(posx, posy, delay=0, btn=0): # btn: 0=left, 1=right, 2+=other
+	if btn<2:
+		mEvent([kCGEventLeftMouseDown,kCGEventRightMouseDown][btn], posx, posy)
+	else:
+		mEvent(kCGEventOtherMouseDown, posx, posy, btn)
+	dprint("mouse down")
+	sleep(delay)
+def mUp(posx, posy, delay=0, btn=0): # btn: 0=left, 1=right, 2+=other
+	if btn<2:
+		mEvent([kCGEventLeftMouseUp,kCGEventRightMouseUp][btn], posx, posy)
+	else:
+		mEvent(kCGEventOtherMouseUp, posx, posy, btn)
+	dprint("mouse up")
+	sleep(delay)
+def mClick(posx, posy, delay=0, reps=1, btn=0):
+	for i in range(0,reps):
+		mDown(posx, posy, 0, btn)
+		mUp(posx, posy, 0, btn)
+		sleep(delay)
+def mHold(posx, posy, delay=0, reps=1, btn=0):
+	for i in range(0,reps):
+		mDown(posx, posy, delay, btn)
+		mUp(posx, posy, 0, btn)
+def mCurPos():
+	theEvent = Quartz.CGEventCreate(None)
+	return Quartz.CGEventGetLocation(theEvent)
+def mDownHere(delay=0, btn=0):
+	posx, posy = mCurPos()
+	mDown(posx, posy, delay, btn)
+def mUpHere(delay=0, btn=0):
+	posx, posy = mCurPos()
+	mUp(posx, posy, delay, btn)
+def mClickHere(delay=0, reps=1, btn=0):
+	posx, posy = mCurPos()
+	mClick(posx, posy, delay, reps, btn)
+def mHoldHere(delay=0, reps=1, btn=0):
+	posx, posy = mCurPos()
+	mHold(posx, posy, delay, reps, btn)
+def kEvent(key, isDown):
+	theEvent = Quartz.CGEventCreateKeyboardEvent(None, key, isDown)
+	Quartz.CGEventPost(kCGHIDEventTap, theEvent)
+#	CFRelease(theEvent)
+def kDown(key, delay=0):
+	code = keyCodeFromString(key)
+	kEvent(code,True)
+	dprint("key down")
+	sleep(delay)
+def kUp(key, delay=0):
+	code = keyCodeFromString(key)
+	kEvent(code,False)
+	dprint("key up")
+	sleep(delay)
+def kPress(key, delay=0, reps=1):
+	for i in range(0,reps):
+		kDown(key)
+		kUp(key)
+		sleep(delay)
+def kHold(key, delay=0, reps=1):
+	for i in range(0,reps):
+		kDown(key)
+		sleep(delay)
+		kUp(key)
+def kType(keys, delay=0, delay2=0, reps=1):
+	for i in range(0,reps):
+		for c in keys:
+			kPress(c, delay)
+		sleep(delay2)
+def kHolds(keys, delay=0, reps=1):
+	for i in range(0,reps):
+		for c in keys:
+			kDown(c)
+		sleep(delay)
+		for c in keys:
+			kUp(c)
