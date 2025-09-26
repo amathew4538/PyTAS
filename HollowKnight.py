@@ -6,5 +6,5 @@ from taslib import *
 kPress("/")  # Clear Timer
 # Open the Hollow Knight application and wait for it to be ready.
 # The second and third arguments are the process name and window name, which are usually the same as the app name.
-openAndWait("/Users/{UserNameHere}/Applications/HollowKnight.app", "Hollow Knight", "Hollow Knight")
+openAndWait("/Applications/HollowKnight.app", "Hollow Knight", "Hollow Knight")
 kPress("left") # Start Timer
